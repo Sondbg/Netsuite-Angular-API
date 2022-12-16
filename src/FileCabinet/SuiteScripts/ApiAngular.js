@@ -38,6 +38,7 @@ log.debug(reqType.type)
 log.debug('response headers',scriptContext.response.headers)
 scriptContext.response.write(JSON.stringify({ok: true, status: 200}));
 return 
+<<<<<<< HEAD
         }
         else if(scriptContext.request.method ==="POST"){
 
@@ -138,6 +139,81 @@ addHeaders()
 
 
 
+=======
+        }
+        else if(scriptContext.request.method ==="POST"){
+
+         var body=scriptContext.request.body;
+         log.debug('POST body',`Body: ${body}`);
+          if(!body){
+            scriptContext.response.write(JSON.stringify({error:'Missing body data'}));
+         return
+         }
+         body=JSON.parse(body);
+         if(body.method=='createCustomer'){
+            var id=createCustomer(body.data);
+            log.debug('record ID', id);
+
+            addHeaders();
+   scriptContext.response.write(JSON.stringify({ok: true, status: 200, internalID:id}));
+return
+         }
+
+
+
+
+
+
+
+
+         // set headers and Response
+addHeaders()
+              scriptContext.response.write(JSON.stringify({ok: true, status: 200}));
+              return 
+        }
+              
+
+     }catch(err){
+         log.debug('error',err)
+         addHeaders()
+         scriptContext.response.write(JSON.stringify({error:err}));      
+     }
+     function addHeaders(){
+      scriptContext.response.addHeader({
+         name:'status',
+          value: '200'
+       });
+         scriptContext.response.addHeader({
+         name:'ok',
+          value: 'true'
+       });
+     
+       scriptContext.response.addHeader({
+         name: 'Access-Control-Allow-Origin',
+          value: 'http://localhost:4200'
+       });
+       scriptContext.response.addHeader({
+        name: 'Access-Control-Allow-Method',
+         value: 'POST, GET'
+      });
+      scriptContext.response.addHeader({
+        name: 'Access-Control-Allow-Headers',
+         value: 'Origin, X-Requested-With, Content-Type, Accept'
+      });
+      scriptContext.response.addHeader({
+        name: 'Content-Type',
+         value: 'application/json'
+      });
+      scriptContext.response.addHeader({
+        name: 'Response-Code',
+         value: '200'
+      });
+   }
+ }
+
+
+
+>>>>>>> 12a0423f031a9f736d7e3334c7ebb71fc2db20ae
 function createCustomer(values){
    var customerRecord=record.create({
       type: record.Type.CUSTOMER,
@@ -196,6 +272,7 @@ customerRecord.commitLine({
   return internalID
 }
 
+<<<<<<< HEAD
 function checkCustomer(email,password){
    var returnInfo;
    var customerSearchObj = search.create({
@@ -297,6 +374,8 @@ return returnObj
    var newSearchId = customerSearchObj.save();
    */
 }
+=======
+>>>>>>> 12a0423f031a9f736d7e3334c7ebb71fc2db20ae
  function customerPrices(company){
 
      if(!company){
