@@ -48,6 +48,8 @@ return
          return
          }
          body=JSON.parse(body);
+
+         // create Customer
          if(body.method=='createCustomer'){
             var id=createCustomer(body.data);
             log.debug('record ID', id);
@@ -55,6 +57,32 @@ return
             addHeaders();
    scriptContext.response.write(JSON.stringify({ok: true, status: 200, internalID:id}));
 return
+         }
+         //checkCustomer Email / password
+         else if(body.method=='checkCustomer'){
+            log.debug('hello')
+            var email=body.data.email;
+            var password=body.data.password
+            var id=checkCustomer(email,password);
+            log.debug('id returned from CheckCustomer',id);
+            var response= id=== false? {ok: true, status: 204} : {ok:true, status:200, internalID:id};
+         log.debug('checkCustomer response',response)
+            scriptContext.response.write(JSON.stringify(response));
+            return
+         }
+         //check Customer ID
+         else if(body.method=='checkCustomerById'){
+            var id=body.data;
+            var response;
+            var result=checkCustomerById(id);
+            log.debug('result checkCustomerById',result)
+            if(result){
+               response={ok:true, status:200, info:result}
+            }else{
+               response={ok: true, status: 204}
+            }
+            scriptContext.response.write(JSON.stringify(response));
+            return
          }
 
 
@@ -70,43 +98,43 @@ addHeaders()
               return 
         }
               
-
+        function addHeaders(){
+         scriptContext.response.addHeader({
+            name:'status',
+             value: '200'
+          });
+            scriptContext.response.addHeader({
+            name:'ok',
+             value: 'true'
+          });
+        
+          scriptContext.response.addHeader({
+            name: 'Access-Control-Allow-Origin',
+             value: 'http://localhost:4200'
+          });
+          scriptContext.response.addHeader({
+           name: 'Access-Control-Allow-Method',
+            value: 'POST, GET'
+         });
+         scriptContext.response.addHeader({
+           name: 'Access-Control-Allow-Headers',
+            value: 'Origin, X-Requested-With, Content-Type, Accept'
+         });
+         scriptContext.response.addHeader({
+           name: 'Content-Type',
+            value: 'application/json'
+         });
+         scriptContext.response.addHeader({
+           name: 'Response-Code',
+            value: '200'
+         });
+      }
      }catch(err){
          log.debug('error',err)
-         addHeaders()
-         scriptContext.response.write(JSON.stringify({error:err}));      
+         var errObj={error:err}
+         scriptContext.response.write(JSON.stringify(errObj));      
      }
-     function addHeaders(){
-      scriptContext.response.addHeader({
-         name:'status',
-          value: '200'
-       });
-         scriptContext.response.addHeader({
-         name:'ok',
-          value: 'true'
-       });
-     
-       scriptContext.response.addHeader({
-         name: 'Access-Control-Allow-Origin',
-          value: 'http://localhost:4200'
-       });
-       scriptContext.response.addHeader({
-        name: 'Access-Control-Allow-Method',
-         value: 'POST, GET'
-      });
-      scriptContext.response.addHeader({
-        name: 'Access-Control-Allow-Headers',
-         value: 'Origin, X-Requested-With, Content-Type, Accept'
-      });
-      scriptContext.response.addHeader({
-        name: 'Content-Type',
-         value: 'application/json'
-      });
-      scriptContext.response.addHeader({
-        name: 'Response-Code',
-         value: '200'
-      });
-   }
+
  }
 
 
@@ -169,6 +197,107 @@ customerRecord.commitLine({
   return internalID
 }
 
+function checkCustomer(email,password){
+   var returnInfo;
+   var customerSearchObj = search.create({
+      type: "customer",
+      filters:
+      [
+         ["email","is",email], 
+         "AND", 
+         ["custentity_password","is",password]
+      ],
+      columns:
+      [
+         search.createColumn({name: "internalid", label: "Internal ID"}),
+         // search.createColumn({name: "vatregnumber", label: "Tax Number"}),
+         // search.createColumn({name: "altname", label: "Name"}),
+         // search.createColumn({name: "email", label: "Email"}),
+         // search.createColumn({name: "phone", label: "Phone"}),
+         // search.createColumn({name: "address", label: "Address"})
+      ]
+   });
+   var searchResultCount = customerSearchObj.runPaged().count;
+   log.debug("Find Customer result count",searchResultCount);
+   if(searchResultCount===0) return false
+   customerSearchObj.run().each(function(result){
+      // .run().each has a limit of 4,000 results
+      returnInfo= result.getValue({
+         name: 'internalid'
+        });
+   });
+   return returnInfo
+   /*
+   customerSearchObj.id="customsearch1671218851392";
+   customerSearchObj.title="DO NOT EDIT Check is Customer / Pass exists (copy)";
+   var newSearchId = customerSearchObj.save();
+   */
+}
+
+function checkCustomerById(id){
+   var returnObj={};
+   var customerSearchObj = search.create({
+      type: "customer",
+      filters:
+      [
+         ["internalid","anyof",id], 
+
+      ],
+      columns:
+      [
+         search.createColumn({name: "internalid", label: "Internal ID"}),
+         search.createColumn({name: "vatregnumber", label: "Tax Number"}),
+         search.createColumn({name: "altname", label: "Name"}),
+         search.createColumn({name: "email", label: "Email"}),
+         search.createColumn({name: "phone", label: "Phone"}),
+         search.createColumn({name: "address", label: "Address"})
+      ]
+   });
+   var searchResultCount = customerSearchObj.runPaged().count;
+   log.debug("Find Customer result count",searchResultCount);
+   if(searchResultCount===0) return false
+   customerSearchObj.run().each(function(result){
+      // .run().each has a limit of 4,000 results
+      var id=result.getValue({
+         name: 'internalid'
+        });
+
+        var vat=result.getValue({
+         name: 'vatregnumber'
+        });
+
+        var name=result.getValue({
+         name: 'altname'
+        });
+
+        var email=result.getValue({
+         name: 'email'
+        });
+        
+        var phone=result.getValue({
+         name: 'phone'
+        });   
+
+        var address=result.getValue({
+         name: 'address'
+        });
+
+     returnObj={
+         id,
+         vat,
+         name,
+         email,
+         phone,
+         address
+        }
+   });
+return returnObj
+   /*
+   customerSearchObj.id="customsearch1671218851392";
+   customerSearchObj.title="DO NOT EDIT Check is Customer / Pass exists (copy)";
+   var newSearchId = customerSearchObj.save();
+   */
+}
  function customerPrices(company){
 
      if(!company){
