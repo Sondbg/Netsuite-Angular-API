@@ -84,7 +84,37 @@ return
             scriptContext.response.write(JSON.stringify(response));
             return
          }
+         //get Items
+         else if(body.method=='getMyItemPrices'){
+            var id=body.data;
+            var response;
 
+            var resultArr=customerPrices(id);
+            log.debug('items Arr',resultArr);
+
+            if(resultArr){
+               response={ok:true, status:200, itemsArr:resultArr}
+            }else{
+               response={ok: true, status: 204}
+            }
+            scriptContext.response.write(JSON.stringify(response));
+            return
+         }else if(body.method=='getItemPrice'){
+            var sku=body.data.sku;
+            var company=body.data.company
+            var response;
+            
+            var resultObj=customerPriceOnItem(company,sku);
+            log.debug('items Arr',resultArr);
+
+            if(resultObj){
+               response={ok:true, status:200, item:resultObj}
+            }else{
+               response={ok: true, status: 204}
+            }
+            scriptContext.response.write(JSON.stringify(response));
+            return
+         }
 
 
 
@@ -94,7 +124,7 @@ return
 
          // set headers and Response
 addHeaders()
-              scriptContext.response.write(JSON.stringify({ok: true, status: 200}));
+              scriptContext.response.write(JSON.stringify({ok: true, status: 204}));
               return 
         }
               
@@ -300,18 +330,25 @@ return returnObj
 }
  function customerPrices(company){
 
-     if(!company){
-company='4018';
+     if(!company.id){
+company={id:"4018"};
+
      }
+log.debug('company ID',company)
+var returnArr=[];
      var pricingSearchObj = search.create({
          type: "pricing",
          filters:
          [
-            ["customer","anyof",company], 
+            ["customer","anyof",company.id], 
             "AND", 
             ["item.custitem_aqt_item_isscheduled","is","T"], 
             "AND", 
-            ["formulatext: {quantityrange}","is","1+"]
+            ["formulatext: {quantityrange}","is","1+"],
+            "AND", 
+      ["item.custitem_aqt_sub_group_code","anyof","1","2","3"],
+      "AND", 
+      ["item.imageurl","isnotempty",""]
          ],
          columns:
          [
@@ -320,6 +357,7 @@ company='4018';
                sort: search.Sort.ASC,
                label: "Item"
             }),
+            
             search.createColumn({name: "unitprice", label: "Unit Price"}),
             search.createColumn({
                name: "imageurl",
@@ -350,12 +388,39 @@ company='4018';
          ]
       });
       var searchResultCount = pricingSearchObj.runPaged().count;
-      log.debug("pricingSearchObj result count",searchResultCount);
-      pricingSearchObj.run().each(function(result){
-         // .run().each has a limit of 4,000 results
-         return true;
-      });
-      
+      log.debug("Item Pricing Search result count",searchResultCount);
+      if(searchResultCount==0) return false
+      var resultSS=pricingSearchObj.run().getRange({
+         start:0,
+         end:100
+      })
+
+      for(var i=0; i<resultSS.length;i++){
+         log.debug('result',resultSS[i])
+         var itemObj={
+            sku: resultSS[i].getText({
+               name: 'item'
+              }),
+              price:resultSS[i].getValue({
+               name: 'unitprice'
+              }),
+              imageUrl:resultSS[i].getValue({
+               name: 'imageurl',
+               join:'item'
+              }),
+              description:resultSS[i].getValue({
+               name: 'custitem_aqt_offer_description',
+               join:'item'
+              }),
+              group:resultSS[i].getValue({
+               name: 'custitem_aqt_sub_group_code',
+               join:'item'
+              }),
+         }
+         returnArr.push(itemObj)
+      }
+
+    return returnArr  
       /*
       pricingSearchObj.id="customsearch1670836163065";
       pricingSearchObj.title="AQT Pricing by Customer (copy)";
@@ -363,7 +428,134 @@ company='4018';
       */
  }
 
+function customerPriceOnItem(company,sku){
+   if(!company){
+      company="4018";
+      
+           }
+      log.debug('company ID ',company)
+           var returnObj;
+      
+           var pricingSearchObj = search.create({
+               type: "pricing",
+               filters:
+               [
+                  ["customer","anyof",company], 
+                  "AND", 
+                  ["item.custitem_aqt_item_isscheduled","is","T"], 
+                  "AND", 
+                  ["formulatext: {quantityrange}","is","1+"],
+                  "AND", 
+            ["item.custitem_aqt_sub_group_code","anyof","1","2","3"],
+            "AND", 
+            ["item.imageurl","isnotempty",""],
+            "AND", 
+            ["formulatext: {item.itemid}","contains",sku]
+               ],
+               columns:
+               [
+                  search.createColumn({
+                     name: "item",
+                     sort: search.Sort.ASC,
+                     label: "Item"
+                  }),
+                  
+                  search.createColumn({name: "unitprice", label: "Unit Price"}),
+                  search.createColumn({
+                     name: "imageurl",
+                     join: "item",
+                     label: "Image URL"
+                  }),
+                  search.createColumn({
+                     name: "custitem_aqt_offer_description",
+                     join: "item",
+                     label: "Описание за оферта"
+                  }),
+                  search.createColumn({
+                     name: "custitem_aqt_item_image1",
+                     join: "item",
+                     label: "Снимка 1 (PDF)"
+                  }),
+                  search.createColumn({
+                     name: "custitem_aqt_group_item",
+                     join: "item",
+                     label: "Група"
+                  }),
+                  search.createColumn({
+                     name: "custitem_aqt_sub_group_code",
+                     join: "item",
+                     label: "Под Група"
+                  }),
+                  search.createColumn({
+                     name: "custitem_aqt_wp_item_description",
+                     join: "item",
+                     label: "Wordpress Description"
+                  }),
+                  search.createColumn({
+                     name: "custitem_aqt_wordpress_item_title",
+                     join: "item",
+                     label: "Wordpress Item Title"
+                  }),
+                  search.createColumn({
+                     name: "saleunit",
+                     join: "item",
+                     label: "Primary Sale Unit"
+                  }),
+                  search.createColumn({name: "currency", label: "Currency"})
+               ]
+            });
+            var searchResultCount = pricingSearchObj.runPaged().count;
+            log.debug("Item Pricing Search result count",searchResultCount);
+            var resultSS=pricingSearchObj.run().getRange({
+               start:0,
+               end:100
+            })
+      
+            for(var i=0; i<resultSS.length;i++){
+               log.debug('result',resultSS[i])
+               var itemObj={
+                  sku: resultSS[i].getText({
+                     name: 'item'
+                    }),
+                    price:resultSS[i].getValue({
+                     name: 'unitprice'
+                    }),
+                    imageUrl:resultSS[i].getValue({
+                     name: 'imageurl',
+                     join:'item'
+                    }),
+                    description:resultSS[i].getValue({
+                     name: 'custitem_aqt_offer_description',
+                     join:'item'
+                    }),
+                    group:resultSS[i].getValue({
+                     name: 'custitem_aqt_sub_group_code',
+                     join:'item'
+                    }),
+                    WPDescription:resultSS[i].getValue({
+                     name: 'custitem_aqt_wp_item_description',
+                     join:'item'
+                    }),
+                    WPItemTitle:resultSS[i].getValue({
+                     name: 'custitem_aqt_wordpress_item_title',
+                     join:'item'
+                    }),
+                    unit:resultSS[i].getText({
+                     name: 'saleunit',
+                     join:'item'
+                    }),
+               }
+               returnObj=itemObj
+            }
+      
+          return returnObj
+            /*
+            pricingSearchObj.id="customsearch1670836163065";
+            pricingSearchObj.title="AQT Pricing by Customer (copy)";
+            var newSearchId = pricingSearchObj.save();
+            */
 
+}
 
      return {onRequest}
 
