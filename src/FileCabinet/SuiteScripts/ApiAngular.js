@@ -123,6 +123,7 @@ return
 
 
          // set headers and Response
+
 addHeaders()
               scriptContext.response.write(JSON.stringify({ok: true, status: 204}));
               return 
@@ -144,7 +145,7 @@ addHeaders()
           });
           scriptContext.response.addHeader({
            name: 'Access-Control-Allow-Method',
-            value: 'POST, GET'
+            value: 'POST, GET, OPTIONS'
          });
          scriptContext.response.addHeader({
            name: 'Access-Control-Allow-Headers',
