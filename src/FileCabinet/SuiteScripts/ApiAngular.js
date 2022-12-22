@@ -121,6 +121,35 @@ return
             addHeaders()
             scriptContext.response.write(JSON.stringify(response));
             return
+         }else if(body.method=='createSO'){
+            var company=body.data.company;
+            var products=body.data.products.personalCart;
+            var response;
+            var result=createSO(products,company)
+            if(result){
+               response={ok:true, status:200}
+            }else{
+              
+               response={ok: true, status: 204}
+            }
+            addHeaders()
+            scriptContext.response.write(JSON.stringify(response));
+            return
+
+         }else if(body.method=='getMySo'){
+            var company=body.data.company;
+            var response;
+            var resultArr=getMySo(company);
+
+            if(resultArr.length>0){
+               response={ok:true, status:200, records:resultArr}
+            }else{
+              
+               response={ok: true, status: 204}
+            }
+            addHeaders()
+            scriptContext.response.write(JSON.stringify(response));
+            return
          }
 
 
@@ -175,7 +204,149 @@ addHeaders()
 
  }
 
+function getMySo(company){
+   var returnArr=[];
 
+   var salesorderSearchObj = search.create({
+      type: "salesorder",
+      filters:
+      [
+         ["mainline","is","T"], 
+         "AND", 
+         ["name","anyof",company], 
+         "AND", 
+         ["type","anyof","SalesOrd"]
+      ],
+      columns:
+      [
+         search.createColumn({name: "trandate", label: "Date"}),
+         search.createColumn({name: "amount", label: "Amount"}),
+         search.createColumn({name: "tranid", label: "Document Number"}),
+         search.createColumn({name: "internalid", label: "Internal ID"})
+      ]
+   });
+   var searchResultCount = salesorderSearchObj.runPaged().count;
+   log.debug("salesorderSearchObj result count",searchResultCount);
+   if(searchResultCount==0) return false
+   var resultSS=salesorderSearchObj.run().getRange({
+      start:0,
+      end:100
+   })
+   for(var i=0; i<resultSS.length;i++){
+      log.debug('result',resultSS[i])
+      var tranObj={
+         date: resultSS[i].getValue({
+            name: 'trandate'
+           }),
+           amount:resultSS[i].getValue({
+            name: 'amount'
+           }),
+           tranID:resultSS[i].getValue({
+            name: 'tranid'
+           }),
+           internalID:resultSS[i].getValue({
+            name: 'internalid'
+           }),
+
+      }
+      returnArr.push(tranObj)
+   }
+
+ return returnArr  
+   
+   /*
+   salesorderSearchObj.id="customsearch1671747230686";
+   salesorderSearchObj.title="AQT SO by Customer (copy)";
+   var newSearchId = salesorderSearchObj.save();
+   */
+}
+
+
+ function createSO(lineItems,company) {
+
+   var newSO = record.create({
+       type: record.Type.SALES_ORDER,
+       isDynamic: true,
+   });
+   setLineOnRecord(newSO, 'customform', '238');
+   setLineOnRecord(newSO, 'entity', company);
+   setLineOnRecord(newSO, 'department', '2');
+   setLineOnRecord(newSO, 'salesrep', '242');
+   setLineOnRecord(newSO, 'location', '15');
+   setLineOnRecord(newSO, 'class', '1');
+   setLineOnRecord(newSO, 'custbody_aqt_created_by', '9708');
+
+
+
+   for (let i = 0; i < lineItems.length; i++) {
+       var itemSku = lineItems[i].sku;
+       var qty = lineItems[i].quantity;
+
+       var searchItemID = search.create({
+           type: 'item',
+           columns: [{
+               name: 'internalid'
+           }],
+           filters: [{
+               name: 'itemid',
+               operator: 'is',
+               values: [itemSku]
+           }]
+       });
+
+       var resultID = searchItemID.run().getRange({
+           start: '0',
+           end: '5'
+       });
+
+       var itemID = resultID[0].getValue({
+           name: 'internalid'
+       });
+       //set item
+       newSO.setCurrentSublistValue({
+           sublistId: 'item',
+           fieldId: 'item',
+           value: itemID,
+           ignoreFieldChange: false
+       });
+       // set quantity
+       newSO.setCurrentSublistValue({
+           sublistId: 'item',
+           fieldId: 'quantity',
+           value: qty,
+           ignoreFieldChange: false
+
+       });
+       newSO.setCurrentSublistValue({
+           sublistId: 'item',
+           fieldId: 'location',
+           value: '15',
+           ignoreFieldChange: false
+
+       });
+       newSO.commitLine({
+           sublistId: 'item'
+       })
+
+   }
+   newSO.save();
+ return newSO.id
+}
+
+function setLineOnRecord(record, field, value) {
+   try {
+       record.setValue({
+           fieldId: field,
+           value: value,
+           ignoreFieldChange: false
+       });
+   } catch (e) {
+       log.debug({
+           title: 'set field Value',
+           details: `field: ${field} ; value: ${value}`
+       });
+   }
+}
 
 function createCustomer(values){
    var customerRecord=record.create({
