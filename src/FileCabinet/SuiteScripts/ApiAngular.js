@@ -36,6 +36,7 @@ log.debug(reqType.type)
                  value: 'true'
               });
 log.debug('response headers',scriptContext.response.headers)
+addHeaders()
 scriptContext.response.write(JSON.stringify({ok: true, status: 200}));
 return 
         }
@@ -44,6 +45,7 @@ return
          var body=scriptContext.request.body;
          log.debug('POST body',`Body: ${body}`);
           if(!body){
+            addHeaders()
             scriptContext.response.write(JSON.stringify({error:'Missing body data'}));
          return
          }
@@ -67,6 +69,7 @@ return
             log.debug('id returned from CheckCustomer',id);
             var response= id=== false? {ok: true, status: 204} : {ok:true, status:200, internalID:id};
          log.debug('checkCustomer response',response)
+         addHeaders()
             scriptContext.response.write(JSON.stringify(response));
             return
          }
@@ -81,6 +84,7 @@ return
             }else{
                response={ok: true, status: 204}
             }
+            addHeaders()
             scriptContext.response.write(JSON.stringify(response));
             return
          }
@@ -97,6 +101,7 @@ return
             }else{
                response={ok: true, status: 204}
             }
+            addHeaders()
             scriptContext.response.write(JSON.stringify(response));
             return
          }else if(body.method=='getItemPrice'){
@@ -110,8 +115,10 @@ return
             if(resultObj){
                response={ok:true, status:200, item:resultObj}
             }else{
+              
                response={ok: true, status: 204}
             }
+            addHeaders()
             scriptContext.response.write(JSON.stringify(response));
             return
          }
@@ -149,7 +156,7 @@ addHeaders()
          });
          scriptContext.response.addHeader({
            name: 'Access-Control-Allow-Headers',
-            value: 'Origin, X-Requested-With, Content-Type, Accept'
+            value: 'Origin, X-Requested-With, Content-Type, Accept, Access-Control-Allow-Headers, Access-Control-Allow-Method, Access-Control-Allow-Origin'
          });
          scriptContext.response.addHeader({
            name: 'Content-Type',
